@@ -5,7 +5,7 @@ from io import StringIO
 import math
 
 # ── CONFIG PÁGINA ──────────────────────────────────────────────
-st.set_page_config("Federico Miele - Analisis de rendimiento", layout="wide")
+st.set_page_config("Federico Miele - Análisis de rendimiento", layout="wide")
 st.markdown("""
 <style>
 .stButton > button {height:50px;font-size:1.05rem;font-weight:600;width:100%;}
@@ -24,32 +24,35 @@ st.session_state.setdefault("registros", [])
 st.session_state.setdefault("zg", 1)
 st.session_state.setdefault("evento", "Atajada")
 
-# ── HELPER: cuadrícula de botones ──────────────────────────────
+# ── HELPER: selector en cuadrícula con 1 clic ──────────────────
 def grid_selector(label, options, key, cols=3, small=False):
     st.markdown(f"**{label}**")
-    rows = math.ceil(len(options)/cols)
+    rows = math.ceil(len(options) / cols)
     for r in range(rows):
-        c_objs = st.columns(cols)
+        cols_obj = st.columns(cols)
         for c in range(cols):
-            idx = r*cols+c
+            idx = r * cols + c
             if idx >= len(options):
-                c_objs[c].empty()
+                cols_obj[c].empty()
                 continue
             opt = options[idx]
-            sel = st.session_state.get(key) == opt
-            btn_lbl = f"✅ {opt}" if sel else str(opt)
-            btn_kwargs = {"key": f"{key}_{opt}"}
-            with c_objs[c]:
-                if st.button(btn_lbl, **btn_kwargs):
-                    st.session_state[key] = opt
-                # Aplicar estilo si es botón pequeño
+            is_selected = st.session_state.get(key) == opt
+            btn_label = f"✅ {opt}" if is_selected else str(opt)
+
+            with cols_obj[c]:
                 if small:
-                    st.markdown(
-                        "<style>"
-                        "div.stButton > button {height:36px;font-size:.8rem;padding:0 6px;}"
-                        "</style>",
-                        unsafe_allow_html=True
-                    )
+                    st.markdown("""
+                        <style>
+                        div.stButton > button {
+                            height: 36px;
+                            font-size: .8rem;
+                            padding: 0 6px;
+                            margin-bottom: 5px;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+                if st.button(btn_label, key=f"{key}_{opt}"):
+                    st.session_state[key] = opt
     st.markdown("")
 
 # ── ENCABEZADO Y CONTROLES PRINCIPALES ─────────────────────────
@@ -81,18 +84,16 @@ if evento == "Atajada":
 elif evento == "Gol Recibido":
     st.markdown('<div class="card bg-gol">', unsafe_allow_html=True)
     st.subheader("Detalle Gol Recibido")
-    grid_selector("📍 Zona Gol", list(range(1,10)), key="zg", cols=3)
+    grid_selector("📍 Zona Gol", list(range(1, 10)), key="zg", cols=3)
 
-    # --- Zona Remate 1-20 con 17a/b/c, 18a/b, 19a/b/c, sin 18c ---
     zona_remate = (
-        [str(i) for i in range(1,17)] +
+        [str(i) for i in range(1, 17)] +
         [f"17{l}" for l in "abc"] +
-        [f"18{l}" for l in "ab"] +          # 18c eliminado
+        [f"18{l}" for l in "ab"] +  # 18c eliminado
         [f"19{l}" for l in "abc"] +
         ["20"]
     )
-    grid_selector("🎯 Zona Remate", zona_remate,
-                  key="zr", cols=5, small=True)
+    grid_selector("🎯 Zona Remate", zona_remate, key="zr", cols=5, small=True)
 
     grid_selector("⚽ Tipo de Gol",
                   ["Jugada","Segunda jugada","Penal","Falta","Córner"],
