@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+import plotly.express as px
+import plotly.graph_objects as go
+from PIL import Image
 from datetime import date
 
 # ────────────────────────────────────────────────────────────────────
@@ -18,70 +18,52 @@ st.title("📊 Dashboard de Rendimiento de Porteros")
 # ────────────────────────────────────────────────────────────────────
 # 1. CARGA DE DATOS
 # ────────────────────────────────────────────────────────────────────
-uploaded_file = st.file_uploader(
-    "Sube aquí el CSV desde la app de captura",
-    type="csv",
-    help="Archivo exportado de tu app – registro_porteros.csv",
+uploaded = st.file_uploader(
+    "Sube tu CSV (registro_porteros.csv)", type="csv", key="uploader"
 )
-
-if not uploaded_file:
-    st.info("Espera… sube el CSV para ver el dashboard")
+if not uploaded:
+    st.info("Sube el CSV exportado desde la app para visualizar el dashboard.")
     st.stop()
 
-df = pd.read_csv(uploaded_file)
-df['fecha'] = pd.to_datetime(df['fecha']).dt.date
+df = pd.read_csv(uploaded, parse_dates=["fecha"])
+df["fecha"] = df["fecha"].dt.date
 
 # ────────────────────────────────────────────────────────────────────
 # 2. FILTROS GLOBALES
 # ────────────────────────────────────────────────────────────────────
 st.sidebar.header("Filtros")
+# Porteros (multi)
+porteros = sorted(df["portero"].unique())
+sel_p = st.sidebar.multiselect("Portero(s)", porteros, default=porteros)
+# Fechas
+min_f, max_f = df["fecha"].min(), df["fecha"].max()
+sel_fecha = st.sidebar.date_input("Rango de fechas", [min_f, max_f], min_value=min_f, max_value=max_f)
+# Eventos
+eventos = sorted(df["evento"].unique())
+sel_e = st.sidebar.multiselect("Evento(s)", eventos, default=eventos)
 
-# Porteros (multi‑selección)
-porteros = sorted(df['portero'].unique())
-portero_sel = st.sidebar.multiselect(
-    "Portero(s)", porteros, default=porteros
-)
-
-# Rango de fechas
-min_f, max_f = df['fecha'].min(), df['fecha'].max()
-fecha_sel = st.sidebar.date_input(
-    "Rango de fechas",
-    value=(min_f, max_f),
-    min_value=min_f,
-    max_value=max_f
-)
-
-# Tipo de evento
-eventos = sorted(df['evento'].unique())
-evento_sel = st.sidebar.multiselect(
-    "Evento(s)", eventos, default=eventos
-)
-
-# Aplicar filtros
 df_f = df[
-    df['portero'].isin(portero_sel) &
-    df['evento'].isin(evento_sel) &
-    (df['fecha'] >= fecha_sel[0]) &
-    (df['fecha'] <= fecha_sel[1])
+    df["portero"].isin(sel_p) &
+    df["evento"].isin(sel_e) &
+    (df["fecha"] >= sel_fecha[0]) &
+    (df["fecha"] <= sel_fecha[1])
 ]
 
 # ────────────────────────────────────────────────────────────────────
-# 3. KPIs GENERALES
+# 3. KPIs
 # ────────────────────────────────────────────────────────────────────
 st.subheader("📌 Indicadores Clave")
-col1, col2, col3, col4 = st.columns(4)
+a = df_f[df_f["evento"] == "Atajada"].shape[0]
+g = df_f[df_f["evento"] == "Gol Recibido"].shape[0]
+p = df_f[df_f["evento"] == "Pase"].shape[0]
+t = a + g
+ef = f"{a*100/t:.1f}%" if t else "—"
 
-atajadas = df_f[df_f['evento']=="Atajada"].shape[0]
-goles   = df_f[df_f['evento']=="Gol Recibido"].shape[0]
-pases   = df_f[df_f['evento']=="Pase"].shape[0]
-tiros   = atajadas + goles
-efectividad = f"{(atajadas/tiros*100):.1f}%" if tiros>0 else "–"
-
-col1.metric("🧤 Atajadas", atajadas)
-col2.metric("🥅 Goles recibidos", goles)
-col3.metric("🎯 Pases", pases)
-col4.metric("✅ Efectividad de atajadas", efectividad)
-
+k1, k2, k3, k4 = st.columns(4, gap="small")
+k1.metric("🧤 Atajadas", a)
+k2.metric("🥅 Goles recibidos", g)
+k3.metric("🎯 Pases", p)
+k4.metric("✅ Efectividad", ef)
 st.markdown("---")
 
 # ────────────────────────────────────────────────────────────────────
@@ -89,124 +71,100 @@ st.markdown("---")
 # ────────────────────────────────────────────────────────────────────
 
 ## 4A: Atajadas
-st.markdown("### 🧤 Segmento A – Atajadas")
-ata_df = df_f[df_f['evento']=="Atajada"]
-
-# 4A.1 Tipo de intervención
-if 'tipo_intervencion' in ata_df:
-    fig1, ax1 = plt.subplots(figsize=(4,3))
-    sns.countplot(
-        data=ata_df,
-        x='tipo_intervencion',
-        order=ata_df['tipo_intervencion'].value_counts().index,
-        ax=ax1
-    )
-    ax1.set_xlabel("Tipo de intervención")
-    ax1.set_ylabel("Cantidad")
-    plt.xticks(rotation=45, ha='right')
-    st.pyplot(fig1)
-
-# 4A.2 Resultado de la parada
-if 'resultado_parada' in ata_df:
-    fig2, ax2 = plt.subplots(figsize=(4,3))
-    sns.countplot(
-        data=ata_df,
-        x='resultado_parada',
-        order=ata_df['resultado_parada'].value_counts().index,
-        ax=ax2
-    )
-    ax2.set_xlabel("Resultado de la parada")
-    ax2.set_ylabel("Cantidad")
-    plt.xticks(rotation=45, ha='right')
-    st.pyplot(fig2)
-
-st.markdown("---")
+ata = df_f[df_f["evento"] == "Atajada"]
+if not ata.empty:
+    st.markdown("### 🧤 Atajadas")
+    c1, c2 = st.columns(2, gap="small")
+    with c1:
+        fig = px.histogram(
+            ata, x="tipo_intervencion",
+            title="Tipo de intervención",
+            text_auto=True
+        )
+        fig.update_layout(margin=dict(t=30,b=0), height=300, xaxis_tickangle=-45)
+        st.plotly_chart(fig, use_container_width=True)
+    with c2:
+        fig = px.histogram(
+            ata, x="resultado_parada",
+            title="Resultado de la parada",
+            text_auto=True
+        )
+        fig.update_layout(margin=dict(t=30,b=0), height=300, xaxis_tickangle=-45)
+        st.plotly_chart(fig, use_container_width=True)
+    st.markdown("---")
 
 ## 4B: Goles recibidos
-st.markdown("### ⚽ Segmento B – Goles recibidos")
-gol_df = df_f[df_f['evento']=="Gol Recibido"]
+gol = df_f[df_f["evento"] == "Gol Recibido"]
+if not gol.empty:
+    st.markdown("### ⚽ Goles Recibidos")
 
-### 4B.1 Heatmap 3×3 – Zona Gol 1‑9
-if 'zona_gol' in gol_df:
-    counts_gz = gol_df['zona_gol'].value_counts().to_dict()
-    # Matriz 3x3 posicionando según la numeración de zonas
-    matrix = [
-        [counts_gz.get(3,0), counts_gz.get(6,0), counts_gz.get(9,0)],
-        [counts_gz.get(2,0), counts_gz.get(5,0), counts_gz.get(8,0)],
-        [counts_gz.get(1,0), counts_gz.get(4,0), counts_gz.get(7,0)],
-    ]
-    fig3, ax3 = plt.subplots(figsize=(4,4))
-    sns.heatmap(
-        matrix, annot=True, fmt="d", cmap="Reds", cbar=False,
-        xticklabels=["Izq","Centro","Der"], yticklabels=["Aux","Med","Inf"],
-        ax=ax3
+    # 4B.1 Zona de gol 1–9 como heatmap 3×3
+    cnt_gz = gol["zona_gol"].value_counts().reindex(range(1,10), fill_value=0)
+    matrix = cnt_gz.values.reshape(3,3)[::-1]  # invertir filas
+    fig = px.imshow(
+        matrix,
+        labels=dict(x="Columna", y="Fila", color="Goles"),
+        x=["1","2","3"], y=["7‑9","4‑6","1‑3"],
+        color_continuous_scale="Reds",
+        text_auto=True
     )
-    ax3.set_title("Mapa de calor: Zona de gol")
-    st.pyplot(fig3)
+    fig.update_layout(margin=dict(t=30,b=0), height=350)
+    st.plotly_chart(fig, use_container_width=True)
 
-### 4B.2 Heatmap libre – Zona de remate 1‑20
-st.markdown("#### 🔴 Mapa de calor: Zona de remate 1–20")
-def plot_remate_heatmap(df_sub):
-    counts = df_sub['zona_remate'].value_counts().to_dict()
-    # Coordenadas normalizadas (x,y,w,h) para c/u (ajusta si necesitas)
-    zone_coords = {
-        '1':(0.85,0.66,0.15,0.33), '2':(0.85,0.33,0.15,0.33), '3':(0.85,0.00,0.15,0.33),
-        '4':(0.70,0.66,0.15,0.33), '5':(0.70,0.33,0.15,0.33), '6':(0.70,0.00,0.15,0.33),
-        '7':(0.55,0.66,0.15,0.33), '8':(0.55,0.33,0.15,0.33), '9':(0.55,0.00,0.15,0.33),
-        '10':(0.40,0.00,0.15,0.33), '11':(0.40,0.66,0.15,0.33), '12':(0.40,0.33,0.15,0.33),
-        '13':(0.25,0.33,0.15,0.33), '14':(0.25,0.00,0.15,0.33), '15':(0.25,0.66,0.15,0.33),
-        '16':(0.10,0.66,0.15,0.33), '17a':(0.10,0.33,0.15,0.33), '17b':(0.10,0.20,0.15,0.13),
-        '17c':(0.10,0.00,0.15,0.20),'18a':(0.00,0.66,0.15,0.33), '18b':(0.00,0.33,0.15,0.33),
-        '19a':(0.00,0.20,0.15,0.13),'19b':(0.00,0.00,0.15,0.20),'19c':(0.00,0.00,0.15,0.20),
-        '20':(0.10,0.00,0.15,0.33),
+    # 4B.2 Zona de remate 1–20 sobre tu diagrama
+    st.markdown("#### 🔴 Zonas de remate")
+    img = Image.open("static/zonas_remate.png")
+    fig2 = go.Figure()
+    fig2.add_layout_image(
+        dict(source=img, xref="x", yref="y", x=0, y=1, sizex=1, sizey=1, sizing="stretch", layer="below")
+    )
+    cnt = gol["zona_remate"].value_counts().to_dict()
+    maxc = max(cnt.values()) if cnt else 1
+    # posiciones normalizadas (ajusta si hiciera falta)
+    positions = {
+        "1":(.93,.85), "2":(.81,.85), "3":(.69,.85), "4":(.57,.85),
+        "5":(.45,.85), "6":(.33,.85), "7":(.21,.85), "8":(.09,.85),
+        "9":(.93,.55), "10":(.81,.55), "11":(.69,.55), "12":(.57,.55),
+        "13":(.45,.55), "14":(.33,.55), "15":(.21,.55), "16":(.09,.55),
+        "17a":(.93,.25),"17b":(.81,.25),"17c":(.69,.25),
+        "18a":(.57,.25),"18b":(.45,.25),
+        "19a":(.33,.25),"19b":(.21,.25),"19c":(.09,.25),
+        "20":(.57,.05)
     }
-    fig, ax = plt.subplots(figsize=(6,4))
-    # Campo base
-    ax.add_patch(patches.Rectangle((0,0),1,1,edgecolor='black', facecolor='none', lw=2))
-    # Pintar zonas
-    mx = max(counts.values()) if counts else 1
-    for z, (x,y,w,h) in zone_coords.items():
-        cnt = counts.get(z,0)
-        color = plt.cm.Reds(cnt/mx)
-        ax.add_patch(patches.Rectangle((x,y), w, h, facecolor=color, edgecolor='gray'))
-        ax.text(x+w/2, y+h/2, f"{z}\n{cnt}", ha='center', va='center', fontsize=8)
-    ax.axis('off')
-    return fig
-
-fig4 = plot_remate_heatmap(gol_df)
-st.pyplot(fig4)
-
-st.markdown("---")
+    for z, (x,y) in positions.items():
+        c = cnt.get(z, 0)
+        fig2.add_trace(go.Scatter(
+            x=[x], y=[1-y],
+            mode="markers+text",
+            text=[f"{c}" if c else ""],
+            textfont=dict(size=10,color="black"),
+            marker=dict(size=10 + (c/maxc)*20, color="red", opacity=0.6),
+            hoverinfo="text",
+            hovertext=f"Zona {z}: {c} goles"
+        ))
+    fig2.update_xaxes(visible=False, range=[0,1])
+    fig2.update_yaxes(visible=False, range=[0,1])
+    fig2.update_layout(margin=dict(t=30,b=0), height=400, title="Mapa de calor: Zona de remate")
+    st.plotly_chart(fig2, use_container_width=True)
+    st.markdown("---")
 
 ## 4C: Pases
-st.markdown("### 🟢 Segmento C – Pases")
-pas_df = df_f[df_f['evento']=="Pase"]
-
-# 4C.1 Precisión por tipo de pase
-if 'tipo_pase' in pas_df:
-    fig5, ax5 = plt.subplots(figsize=(4,3))
-    sns.countplot(
-        data=pas_df, x='tipo_pase',
-        hue='pase_exitoso',
-        order=pas_df['tipo_pase'].value_counts().index,
-        ax=ax5
+pas = df_f[df_f["evento"] == "Pase"]
+if not pas.empty:
+    st.markdown("### 🟢 Pases")
+    fig = px.histogram(
+        pas, x="tipo_pase", color="pase_exitoso",
+        title="Precisión por tipo de pase",
+        text_auto=True, barmode="group"
     )
-    ax5.set_xlabel("Tipo de pase"); ax5.set_ylabel("Cantidad")
-    plt.xticks(rotation=45, ha='right')
-    st.pyplot(fig5)
+    fig.update_layout(margin=dict(t=30,b=0), height=350, xaxis_tickangle=-45)
+    st.plotly_chart(fig, use_container_width=True)
 
 # ────────────────────────────────────────────────────────────────────
-# 5. TABLA DETALLADA Y DESCARGA
+# 5. TABLA Y DESCARGA
 # ────────────────────────────────────────────────────────────────────
 st.markdown("---")
-st.subheader("📄 Tabla de eventos filtrados")
-st.dataframe(df_f, use_container_width=True)
-
-# Botón CSV
-csv_buf = df_f.to_csv(index=False).encode('utf-8')
-st.download_button(
-    "💾 Descargar CSV filtrado",
-    data=csv_buf,
-    file_name="registro_filtrado.csv",
-    mime="text/csv"
-)
+st.subheader("📄 Eventos filtrados")
+st.dataframe(df_f, use_container_width=True, height=300)
+csv = df_f.to_csv(index=False).encode("utf-8")
+st.download_button("💾 Descargar CSV", data=csv, file_name="filtrado.csv", mime="text/csv")
