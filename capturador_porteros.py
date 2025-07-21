@@ -41,10 +41,9 @@ def grid_selector(label, options, key, cols=3, small=False):
             if small:
                 with c_objs[c]:
                     st.markdown(
-                        f'<button class="small-btn">{btn_lbl}</button>',
-                        unsafe_allow_html=True,
-                        key=f"{key}_{opt}_html",
-                    )
+    f'<button class="small-btn">{btn_lbl}</button>',
+    unsafe_allow_html=True,
+)
                     if st.button("", key=f"{key}_{opt}_real"):
                         st.session_state[key] = opt
             else:
