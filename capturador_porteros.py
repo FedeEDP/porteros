@@ -33,22 +33,23 @@ def grid_selector(label, options, key, cols=3, small=False):
         for c in range(cols):
             idx = r*cols+c
             if idx >= len(options):
-                c_objs[c].empty(); continue
+                c_objs[c].empty()
+                continue
             opt = options[idx]
             sel = st.session_state.get(key) == opt
             btn_lbl = f"✅ {opt}" if sel else str(opt)
             btn_kwargs = {"key": f"{key}_{opt}"}
-            if small:
-                with c_objs[c]:
-                    st.markdown(
-    f'<button class="small-btn">{btn_lbl}</button>',
-    unsafe_allow_html=True,
-)
-                    if st.button("", key=f"{key}_{opt}_real"):
-                        st.session_state[key] = opt
-            else:
-                if c_objs[c].button(btn_lbl, **btn_kwargs):
+            with c_objs[c]:
+                if st.button(btn_lbl, **btn_kwargs):
                     st.session_state[key] = opt
+                # Aplicar estilo si es botón pequeño
+                if small:
+                    st.markdown(
+                        "<style>"
+                        "div.stButton > button {height:36px;font-size:.8rem;padding:0 6px;}"
+                        "</style>",
+                        unsafe_allow_html=True
+                    )
     st.markdown("")
 
 # ── ENCABEZADO Y CONTROLES PRINCIPALES ─────────────────────────
