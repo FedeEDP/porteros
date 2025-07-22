@@ -7,7 +7,7 @@ from io import StringIO
 from datetime import date
 
 # ────────────────────────────────────────────────────────────────────
-# 1. CONFIGURACIÓN DE PÁGINA
+# 1. CONFIGURACIÓN PÁGINA
 # ────────────────────────────────────────────────────────────────────
 st.set_page_config("Dashboard Porteros", layout="wide")
 st.title("📊 Dashboard de Rendimiento de Porteros")
@@ -30,7 +30,6 @@ df["fecha"] = df["fecha"].dt.date
 st.sidebar.header("📋 Filtros")
 ports = sorted(df["portero"].unique())
 sel_p = st.sidebar.multiselect("Portero(s)", ports, default=ports)
-
 min_d, max_d = df["fecha"].min(), df["fecha"].max()
 sel_d = st.sidebar.date_input(
     "Rango de fechas",
@@ -38,7 +37,6 @@ sel_d = st.sidebar.date_input(
     min_value=min_d,
     max_value=max_d
 )
-
 evs = sorted(df["evento"].unique())
 sel_e = st.sidebar.multiselect("Evento(s)", evs, default=evs)
 
@@ -61,7 +59,7 @@ ef_ps  = f"{(ok_ps*100/tot_ps):.1f}%" if tot_ps else "—"
 ef_at  = f"{(atjs*100/(atjs+gls)):.1f}%" if (atjs+gls) else "—"
 
 st.subheader("📌 Indicadores Clave")
-c1, c2, c3, c4 = st.columns(4, gap="small")
+c1,c2,c3,c4 = st.columns(4, gap="small")
 c1.metric("🧤 Atajadas", atjs)
 c2.metric("🥅 Goles recibidos", gls)
 c3.metric("🎯 Eficiencia pases", ef_ps)
@@ -77,9 +75,9 @@ if not ata.empty:
     ca, cb = st.columns(2, gap="small")
     with ca:
         fig, ax = plt.subplots(figsize=(3,2))
-        ata["tipo_intervencion"].value_counts().plot.bar(
-            ax=ax, color="#74b9ff", width=0.6
-        )
+        ata["tipo_intervencion"]\
+           .value_counts()\
+           .plot.bar(ax=ax, color="#74b9ff", width=0.6)
         ax.set_title("Tipo de intervención", fontsize=10, pad=6)
         ax.tick_params(axis='x', rotation=45, labelsize=7)
         ax.tick_params(axis='y', labelsize=7)
@@ -87,9 +85,9 @@ if not ata.empty:
         st.pyplot(fig)
     with cb:
         fig, ax = plt.subplots(figsize=(3,2))
-        ata["resultado_parada"].value_counts().plot.bar(
-            ax=ax, color="#ff7675", width=0.6
-        )
+        ata["resultado_parada"]\
+           .value_counts()\
+           .plot.bar(ax=ax, color="#ff7675", width=0.6)
         ax.set_title("Resultado de la parada", fontsize=10, pad=6)
         ax.tick_params(axis='x', rotation=45, labelsize=7)
         ax.tick_params(axis='y', labelsize=7)
@@ -98,13 +96,13 @@ if not ata.empty:
     st.markdown("---")
 
 # ────────────────────────────────────────────────────────────────────
-# 5B. SEGMENTO B – Goles recibidos
+# 5B. SEGMENTO B – Goles recibidos + Zona remate
 # ────────────────────────────────────────────────────────────────────
 gol = df_f[df_f["evento"]=="Gol Recibido"]
 if not gol.empty:
     st.markdown("### ⚽ Segmento B – Goles Recibidos")
 
-    # (a) Zona gol 1–9 (3×3)
+    # — Zona de gol 1–9 (3×3) —
     cnt9 = gol["zona_gol"].value_counts().reindex(range(1,10), fill_value=0)
     mat9 = cnt9.values.reshape(3,3)[::-1]
     fig, ax = plt.subplots(figsize=(3,3))
@@ -117,60 +115,52 @@ if not gol.empty:
     plt.tight_layout()
     st.pyplot(fig)
 
-    # (b) Zona remate 1–20 FULL WIDTH con subdivisiones
+    # — Zona de remate 1–20 (full–width) con subdivisiones —
     st.markdown("#### 🔴 Segmento B – Mapa de calor: Zona de remate 1–20")
-    xs = [0.875, 0.625, 0.375, 0.125]  # columnas de derecha a izquierda
-    ys = [0.90, 0.70, 0.50, 0.30, 0.10]  # filas de arriba a abajo
+    # columnas: de derecha a izquierda 1→5→10→15→20
+    xs = [0.875, 0.625, 0.375, 0.125]
+    ys = [0.90, 0.70, 0.50, 0.30, 0.10]
+    # mapeo de zonas principales y subdivisiones individuales
     zone_map = {
-        "1":  (xs[0], ys[0]), "2":  (xs[0], ys[1]),
-        "3":  (xs[0], ys[2]), "4":  (xs[0], ys[3]),
-        "5":  (xs[0], ys[4]),
-        "6":  (xs[1], ys[0]), "7":  (xs[1], ys[1]),
-        "8":  (xs[1], ys[2]), "9":  (xs[1], ys[3]),
-        "10": (xs[1], ys[4]),
-        "11": (xs[2], ys[0]), "12": (xs[2], ys[1]),
-        "13": (xs[2], ys[2]), "14": (xs[2], ys[3]),
-        "15": (xs[2], ys[4]),
-        "16": (xs[3], ys[0]), "17": (xs[3], ys[1]),
-        "18": (xs[3], ys[2]), "19": (xs[3], ys[3]),
-        "20": (xs[3], ys[4]),
+        "1":(xs[0],ys[0]), "2":(xs[0],ys[1]), "3":(xs[0],ys[2]),
+        "4":(xs[0],ys[3]), "5":(xs[0],ys[4]),
+
+        "6":(xs[1],ys[0]), "7":(xs[1],ys[1]), "8":(xs[1],ys[2]),
+        "9":(xs[1],ys[3]), "10":(xs[1],ys[4]),
+
+        "11":(xs[2],ys[0]), "12":(xs[2],ys[1]), "13":(xs[2],ys[2]),
+        "14":(xs[2],ys[3]), "15":(xs[2],ys[4]),
+
+        "16":(xs[3],ys[0]),
+
+        "17a":(xs[3],ys[1]), "17b":(xs[3],ys[2]), "17c":(xs[3],ys[3]),
+        "20":(xs[3],ys[4]),
+
+        "18a":(xs[3]-0.10, ys[2]), "18b":(xs[3]-0.10, ys[3]),
+        "19a":(xs[3]-0.20, ys[2]), "19b":(xs[3]-0.20, ys[3]),
+        "19c":(xs[3]-0.20, ys[4]),
     }
     cnt20 = gol["zona_remate"].value_counts().to_dict()
-    mx20  = max(cnt20.values()) if cnt20 else 1
+    mx20 = max(cnt20.values()) if cnt20 else 1
 
     fig, ax = plt.subplots(figsize=(8,2))
-    ax.add_patch(patches.Rectangle((0,0),1,1, facecolor="#fff5f0", edgecolor="none"))
-    cell_w, cell_h = 0.23, 0.17
+    ax.add_patch(patches.Rectangle((0,0),1,1,
+                    facecolor="#fff5f0", edgecolor="none"))
+    w, h = 0.23, 0.17
 
     for z, (cx, cy) in zone_map.items():
-        x0 = cx - cell_w/2
-        y0 = 1 - cy - cell_h/2  # invertir Y para colocar fila superior arriba
+        # no invertir y
+        x0 = cx - w/2
+        y0 = cy - h/2
 
-        # determinar subdivisiones
-        if z in ("17","19"):
-            n = 3
-        elif z == "18":
-            n = 2
-        else:
-            n = 1
-
-        subs = np.linspace(x0, x0 + cell_w, n+1)[:-1]
-        cnt = cnt20.get(z, 0)
+        cnt = cnt20.get(z,0)
         col = plt.cm.Reds(cnt/mx20)
-
-        for idx, sx in enumerate(subs):
-            w = cell_w / n
-            ax.add_patch(patches.Rectangle(
-                (sx, y0), w, cell_h,
-                facecolor=col, edgecolor="#cccccc", lw=0.7
-            ))
-            # etiqueta en primera subcelda
-            if idx == 0:
-                label = z if n == 1 else f"{z}{'abc'[idx]}"
-                ax.text(sx + 0.01, y0 + cell_h*0.55, label,
-                        fontsize=8, ha="left", va="center")
-                ax.text(sx + 0.01, y0 + cell_h*0.30, str(cnt),
-                        fontsize=8, ha="left", va="center")
+        ax.add_patch(patches.Rectangle(
+            (x0,y0), w, h,
+            facecolor=col, edgecolor="#cccccc", lw=0.7
+        ))
+        ax.text(x0+0.01, y0+h*0.55, z, fontsize=8, ha="left", va="center")
+        ax.text(x0+0.01, y0+h*0.30, str(cnt), fontsize=8, ha="left", va="center")
 
     ax.set_xticks([]); ax.set_yticks([])
     ax.set_xlim(0,1); ax.set_ylim(0,1)
@@ -186,11 +176,11 @@ if not p.empty:
     st.markdown("### 🟢 Segmento C – Pases (Radar)")
     tipos = ["Corto","Medio","Largo","Despeje"]
     tasas = [
-        ((p["tipo_pase"]==t) & (p["pase_exitoso"]=="Sí")).sum() /
-        max(1, (p["tipo_pase"]==t).sum())
+        ((p["tipo_pase"]==t)&(p["pase_exitoso"]=="Sí")).sum() /
+        max(1,(p["tipo_pase"]==t).sum())
         for t in tipos
     ]
-    angles = np.linspace(0, 2*np.pi, len(tipos), endpoint=False).tolist()
+    angles = np.linspace(0,2*np.pi,len(tipos),endpoint=False).tolist()
     tasas += tasas[:1]; angles += angles[:1]
 
     fig, ax = plt.subplots(figsize=(4,2), subplot_kw=dict(polar=True))
@@ -204,11 +194,12 @@ if not p.empty:
     st.pyplot(fig)
 
 # ────────────────────────────────────────────────────────────────────
-# 6. TABLA DETALLADA Y DESCARGA
+# 6. TABLA Y DESCARGA
 # ────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.subheader("📄 Eventos filtrados")
 st.dataframe(df_f, use_container_width=True, height=200)
 buf = StringIO()
 df_f.to_csv(buf, index=False)
-st.download_button("💾 Descargar CSV", buf.getvalue(), "filtrado.csv", "text/csv")
+st.download_button("💾 Descargar CSV", buf.getvalue(),
+                   "filtrado.csv","text/csv")
