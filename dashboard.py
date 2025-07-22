@@ -18,7 +18,8 @@ st.markdown("---")
 # ────────────────────────────────────────────────────────────────────
 f = st.file_uploader("Sube tu CSV (registro_porteros.csv)", type="csv")
 if not f:
-    st.info("Sube el CSV para ver el dashboard."); st.stop()
+    st.info("Sube el CSV para ver el dashboard.")
+    st.stop()
 
 df = pd.read_csv(f, parse_dates=["fecha"])
 df["fecha"] = df["fecha"].dt.date
@@ -78,41 +79,41 @@ if not ata.empty:
 
     angles = np.linspace(0, 2*np.pi, len(cats), endpoint=False).tolist()
     angles += angles[:1]
-    cnt_t += cnt_t[:1]; cnt_r += cnt_r[:1]
+    cnt_t += cnt_t[:1]
+    cnt_r += cnt_r[:1]
 
-    fig, ax = plt.subplots(figsize=(3,3), subplot_kw=dict(polar=True))
+    fig, ax = plt.subplots(figsize=(2.5,2.5), subplot_kw=dict(polar=True))
     ax.plot(angles, cnt_t, marker="o", color="#74b9ff", linewidth=1)
     ax.fill(angles, cnt_t, alpha=0.2, color="#74b9ff")
     ax.plot(angles, cnt_r, marker="o", color="#ff7675", linewidth=1)
     ax.fill(angles, cnt_r, alpha=0.2, color="#ff7675")
-    ax.set_thetagrids(np.degrees(angles[:-1]), cats, fontsize=7)
-    ax.set_title("", pad=6, fontsize=10)
-    ax.grid(color="#888888", linestyle="--", linewidth=0.5)
+    ax.set_thetagrids(np.degrees(angles[:-1]), cats, fontsize=6)
+    ax.set_title("", pad=4, fontsize=9)
+    ax.grid(color="#888", linestyle="--", linewidth=0.5)
     plt.tight_layout()
     st.pyplot(fig)
     st.markdown("---")
 
 # ────────────────────────────────────────────────────────────────────
-# 5B. SEGMENTO B – Goles recibidos & Zona de remate
+# 5B. SEGMENTO B – Goles recibidos & Zona remate
 # ────────────────────────────────────────────────────────────────────
 gol = df_f[df_f["evento"]=="Gol Recibido"]
 if not gol.empty:
     st.markdown("### ⚽ Segmento B – Goles Recibidos")
 
-    # — Zona de gol 1–9 (pequeño) —
+    # (a) Zona 1–9
     cnt9 = gol["zona_gol"].value_counts().reindex(range(1,10), fill_value=0)
     mat9 = cnt9.values.reshape(3,3)[::-1]
-    fig, ax = plt.subplots(figsize=(2.5,2.5))
+    fig, ax = plt.subplots(figsize=(2,2))
     ax.imshow(mat9, cmap="Reds", aspect='equal')
     for i in range(3):
         for j in range(3):
-            ax.text(j, i, mat9[i,j], ha="center", va="center", fontsize=8)
+            ax.text(j, i, mat9[i,j], ha="center", va="center", fontsize=7)
     ax.set_xticks([]); ax.set_yticks([])
-    ax.set_title("Zona gol 1–9", fontsize=10, pad=4)
     plt.tight_layout()
     st.pyplot(fig)
 
-    # — Zona de remate full–width (destacado) —
+    # (b) Zona remate 1–20
     st.markdown("#### 🔴 Mapa de calor: Zona de remate 1–20")
     xs = [0.875, 0.625, 0.375, 0.125]
     ys = [0.90,   0.70,   0.50,   0.30,   0.10]
@@ -127,30 +128,35 @@ if not gol.empty:
     cnt20 = gol["zona_remate"].value_counts().to_dict()
     mx20  = max(cnt20.values()) if cnt20 else 1
 
-    fig, ax = plt.subplots(figsize=(8,2))
-    ax.add_patch(patches.Rectangle((0,0),1,1,
-                    facecolor="#fff5f0", edgecolor="none"))
+    fig, ax = plt.subplots(figsize=(6,1.5))
+    ax.add_patch(patches.Rectangle((0,0),1,1, facecolor="#fff5f0", edgecolor="none"))
     w, h = 0.23, 0.17
 
     for z, (cx, cy) in zone_map.items():
-        x0, y0 = cx - w/2, cy - h/2
-        # subdivisiones
-        if z in ("17","19"): n=3
-        elif z=="18":        n=2
-        else:                 n=1
-        subs = np.linspace(x0, x0+w, n+1)[:-1]
-        total = cnt20.get(z,0)
+        x0 = cx - w/2
+        y0 = cy - h/2
+        if   z in ("17","19"): n = 3
+        elif z == "18":       n = 2
+        else:                 n = 1
+        subs = np.linspace(x0, x0 + w, n+1)[:-1]
+        total = cnt20.get(z, 0)
         for i, sx in enumerate(subs):
             col = "#b00000" if total>0 else "#fff5f0"
             ax.add_patch(patches.Rectangle(
                 (sx, y0), w/n, h,
-                facecolor=col, edgecolor="#cccccc", lw=0.7
+                facecolor=col, edgecolor="#ccc", lw=0.5
             ))
-            label = z if n==1 else f"{z}{['c','b','a'][i]}"
-            ax.text(sx+0.01, y0+h*0.55, label,
-                    fontsize=8, ha="left", va="center")
-            ax.text(sx+0.01, y0+h*0.30, str(total),
-                    fontsize=8, ha="left", va="center")
+            # invertir subdivisión 18: ['c','b']
+            if z=="18":
+                letters = ['c','b']
+            else:
+                letters = ['c','b','a'][:n]
+            letters = letters[::-1]
+            label = z if n==1 else f"{z}{letters[i]}"
+            ax.text(sx+0.005, y0+h*0.55, label,
+                    fontsize=7, ha="left", va="center")
+            ax.text(sx+0.005, y0+h*0.30, str(total),
+                    fontsize=7, ha="left", va="center")
 
     ax.set_xticks([]); ax.set_yticks([])
     ax.set_xlim(0,1); ax.set_ylim(0,1)
@@ -159,7 +165,7 @@ if not gol.empty:
     st.markdown("---")
 
 # ────────────────────────────────────────────────────────────────────
-# 5C. SEGMENTO C – Pases (barra horizontal muy pequeña)
+# 5C. SEGMENTO C – Pases (Mini barra)
 # ────────────────────────────────────────────────────────────────────
 p = df_f[df_f["evento"]=="Pase"]
 if not p.empty:
@@ -169,14 +175,13 @@ if not p.empty:
          .apply(lambda s: (s=="Sí").sum()/len(s))
          .sort_index()
     )
-    fig, ax = plt.subplots(figsize=(2.5,0.8))
+    fig, ax = plt.subplots(figsize=(2,0.8))
     ax.barh(tasas.index, tasas.values, color="#55efc4", height=0.4)
     for i, v in enumerate(tasas.values):
-        ax.text(v+0.005, i, f"{v*100:.0f}%",
+        ax.text(v+0.003, i, f"{v*100:.0f}%",
                 va="center", fontsize=6)
     ax.set_xlim(0,1)
     ax.tick_params(axis='both', labelsize=6)
-    ax.set_xlabel("Eficacia", fontsize=7)
     plt.tight_layout()
     st.pyplot(fig)
 
@@ -188,4 +193,4 @@ st.subheader("📄 Eventos filtrados")
 st.dataframe(df_f, use_container_width=True, height=200)
 buf = StringIO(); df_f.to_csv(buf, index=False)
 st.download_button("💾 Descargar CSV", buf.getvalue(),
-                   "filtrado.csv","text/csv")
+                   "filtrado.csv", "text/csv")
