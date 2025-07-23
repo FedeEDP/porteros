@@ -47,12 +47,12 @@ df_f = df[
 # ─────────────────────────────
 # KPIs PRINCIPALES
 # ─────────────────────────────
-ata = df_f[df_f["evento"]=="Atajada"].shape[0]
-gol = df_f[df_f["evento"]=="Gol Recibido"].shape[0]
+ata = int(df_f[df_f["evento"]=="Atajada"].shape[0])
+gol = int(df_f[df_f["evento"]=="Gol Recibido"].shape[0])
 pas = df_f[df_f["evento"]=="Pase"]
-tot_p = len(pas)
-ok_p  = (pas["pase_exitoso"]=="Sí").sum()
-ef_p  = f"{ok_p*100/tot_p:.1f}%" if tot_p else "—"
+tot_p = int(len(pas))
+ok_p  = int((pas["pase_exitoso"]=="Sí").sum())
+ef_p  = f"{(ok_p*100/tot_p):.1f}%" if tot_p else "—"
 ef_a  = f"{(ata*100/(ata+gol)):.1f}%" if (ata+gol) else "—"
 
 k1, k2, k3, k4 = st.columns(4, gap="small")
@@ -71,20 +71,24 @@ if not ataja.empty:
     col1, col2 = st.columns(2, gap="small")
     with col1:
         fig, ax = plt.subplots(figsize=(2.6,1.8))
-        ataja["tipo_intervencion"].value_counts().plot.bar(
-            ax=ax, color="#74b9ff", width=0.6)
+        vals = ataja["tipo_intervencion"].value_counts().sort_index()
+        ax.bar(vals.index, vals.values, color="#74b9ff", width=0.6)
         ax.set_title("Tipo de intervención", pad=4, fontsize=10)
         ax.tick_params(axis='x', rotation=45, labelsize=7)
         ax.tick_params(axis='y', labelsize=7)
+        for i, v in enumerate(vals.values):
+            ax.text(i, v+0.15, f"{int(v)}", ha="center", va="bottom", fontsize=8)
         plt.tight_layout()
         st.pyplot(fig)
     with col2:
         fig, ax = plt.subplots(figsize=(2.6,1.8))
-        ataja["resultado_parada"].value_counts().plot.bar(
-            ax=ax, color="#ff7675", width=0.6)
+        vals = ataja["resultado_parada"].value_counts().sort_index()
+        ax.bar(vals.index, vals.values, color="#ff7675", width=0.6)
         ax.set_title("Resultado de la parada", pad=4, fontsize=10)
         ax.tick_params(axis='x', rotation=45, labelsize=7)
         ax.tick_params(axis='y', labelsize=7)
+        for i, v in enumerate(vals.values):
+            ax.text(i, v+0.15, f"{int(v)}", ha="center", va="bottom", fontsize=8)
         plt.tight_layout()
         st.pyplot(fig)
     st.markdown("---")
@@ -118,18 +122,20 @@ if not goles.empty:
             goles["intervalo"] = pd.Categorical(goles["intervalo"], categories=intervalos, ordered=True)
             cnt_iv = goles["intervalo"].value_counts().reindex(intervalos, fill_value=0)
             fig, ax = plt.subplots(figsize=(2.6,1.5))
-            cnt_iv.plot.bar(ax=ax, color="#d35400", width=0.7)
+            ax.bar(cnt_iv.index, cnt_iv.values, color="#d35400", width=0.7)
             ax.set_title("Goles por intervalo", pad=5, fontsize=10)
             ax.tick_params(axis='x', rotation=30, labelsize=8)
             ax.tick_params(axis='y', labelsize=8)
+            for i, v in enumerate(cnt_iv.values):
+                ax.text(i, v+0.1, f"{int(v)}", ha="center", va="bottom", fontsize=8)
             plt.tight_layout()
             st.pyplot(fig)
     st.markdown("")
 
-    # Mapa de calor: Zona de remate 1–20
+    # Mapa de calor: Zona de remate 1–20 (ESQUINA SUP DERECHA=1)
     st.markdown("#### 🔴 Mapa de calor: Zona de remate 1–20")
-    xs = [0.125, 0.375, 0.625, 0.875]
-    ys = [0.90, 0.70, 0.50, 0.30, 0.10]
+    xs = [0.875, 0.625, 0.375, 0.125]  # derecha→izquierda
+    ys = [0.90, 0.70, 0.50, 0.30, 0.10]  # arriba→abajo
     grid = [
         [("1",1),  ("6",1),  ("11",1), ("16",1)],
         [("2",1),  ("7",1),  ("12",1), ("17",3)],
@@ -159,7 +165,7 @@ if not goles.empty:
                 ax2.text(sx+0.005, y0+cell_h*0.55,
                          lbl, fontsize=6, ha="left", va="center")
                 ax2.text(sx+0.005, y0+cell_h*0.30,
-                         str(total), fontsize=6, ha="left", va="center")
+                         str(int(total)), fontsize=6, ha="left", va="center")
     ax2.axis("off")
     plt.tight_layout()
     st.pyplot(fig2)
@@ -177,13 +183,24 @@ if not pases.empty:
              .sort_index()
     )
     fig, ax = plt.subplots(figsize=(1.8,0.8))
-    ax.barh(tasas.index, tasas.values, color="#00bfa5", height=0.3)
-    for i, v in enumerate(tasas.values):
-        ax.text(v+0.005, i, f"{v*100:.0f}%", va="center", fontsize=6)
-    ax.set_xlim(0,1)
+    ax.barh(tasas.index, (pases["tipo_pase"].value_counts()[tasas.index]).astype(int), color="#00bfa5", height=0.3)
+    for i, t in enumerate(tasas.index):
+        v = pases["tipo_pase"].value_counts()[t]
+        ax.text(v+0.05, i, f"{int(v)}", va="center", fontsize=7)
+    ax.set_xlabel("Nº")
     ax.tick_params(labelsize=6)
     plt.tight_layout()
     st.pyplot(fig)
+
+    fig2, ax2 = plt.subplots(figsize=(1.8,0.8))
+    ax2.barh(tasas.index, tasas.values*100, color="#0984e3", height=0.3)
+    for i, v in enumerate(tasas.values):
+        ax2.text(v*100+1, i, f"{v*100:.1f}%", va="center", fontsize=7)
+    ax2.set_xlim(0,100)
+    ax2.set_xlabel("% éxito")
+    ax2.tick_params(labelsize=6)
+    plt.tight_layout()
+    st.pyplot(fig2)
     st.markdown("---")
 
 # ─────────────────────────────
