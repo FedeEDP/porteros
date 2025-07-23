@@ -6,16 +6,12 @@ import matplotlib.patches as patches
 from io import StringIO
 from datetime import date
 
-# ─────────────────────────────
-# CONFIGURACIÓN DE PÁGINA
-# ─────────────────────────────
+# ────────── Configuración de página ──────────
 st.set_page_config("Federico Miele EDP - Dashboard", layout="wide")
 st.title("Federico Miele EDP - Dashboard")
 st.markdown("---")
 
-# ─────────────────────────────
-# CARGA DE DATOS
-# ─────────────────────────────
+# ────────── Carga de datos ──────────
 csv = st.file_uploader("Sube CSV (registro_porteros.csv)", type="csv")
 if not csv:
     st.info("Carga el CSV para continuar."); st.stop()
@@ -23,9 +19,7 @@ if not csv:
 df = pd.read_csv(csv, parse_dates=["fecha"])
 df["fecha"] = df["fecha"].dt.date
 
-# ─────────────────────────────
-# FILTROS GLOBALES
-# ─────────────────────────────
+# ────────── Filtros globales ──────────
 st.sidebar.header("Filtros")
 porteros = sorted(df["portero"].unique())
 sel_p    = st.sidebar.multiselect("Portero(s)", porteros, default=porteros)
@@ -44,9 +38,7 @@ df_f = df[
     (df["fecha"] <= sel_d[1])
 ]
 
-# ─────────────────────────────
-# KPIs PRINCIPALES
-# ─────────────────────────────
+# ────────── KPIs principales ──────────
 ata = int(df_f[df_f["evento"]=="Atajada"].shape[0])
 gol = int(df_f[df_f["evento"]=="Gol Recibido"].shape[0])
 pas = df_f[df_f["evento"]=="Pase"]
@@ -62,9 +54,7 @@ k3.metric("🎯 Eficiencia pases", ef_p)
 k4.metric("✅ Eficacia atajadas", ef_a)
 st.markdown("---")
 
-# ─────────────────────────────
-# SEGMENTO A: Atajadas
-# ─────────────────────────────
+# ────────── Segmento A: Atajadas ──────────
 ataja = df_f[df_f["evento"]=="Atajada"]
 if not ataja.empty:
     st.markdown("### 🧤 Segmento A – Atajadas")
@@ -93,9 +83,7 @@ if not ataja.empty:
         st.pyplot(fig)
     st.markdown("---")
 
-# ─────────────────────────────
-# SEGMENTO B: Goles Recibidos
-# ─────────────────────────────
+# ────────── Segmento B: Goles Recibidos ──────────
 goles = df_f[df_f["evento"]=="Gol Recibido"]
 if not goles.empty:
     st.markdown("### ⚽ Segmento B – Goles Recibidos")
@@ -171,41 +159,64 @@ if not goles.empty:
     st.pyplot(fig2)
     st.markdown("---")
 
-# ─────────────────────────────
-# SEGMENTO C: Pases
-# ─────────────────────────────
+# ────────── Segmento C: Pases ──────────
 pases = df_f[df_f["evento"]=="Pase"]
 if not pases.empty:
     st.markdown("### 🟢 Segmento C – Pases")
-    tasas = (
-        pases.groupby("tipo_pase")["pase_exitoso"]
-             .apply(lambda s: (s=="Sí").sum()/len(s))
-             .sort_index()
-    )
-    fig, ax = plt.subplots(figsize=(1.8,0.8))
-    ax.barh(tasas.index, (pases["tipo_pase"].value_counts()[tasas.index]).astype(int), color="#00bfa5", height=0.3)
-    for i, t in enumerate(tasas.index):
-        v = pases["tipo_pase"].value_counts()[t]
-        ax.text(v+0.05, i, f"{int(v)}", va="center", fontsize=7)
-    ax.set_xlabel("Nº")
-    ax.tick_params(labelsize=6)
-    plt.tight_layout()
-    st.pyplot(fig)
+    tipos = ["Corto","Medio","Largo","Despeje"]
+    # Cantidad de cada tipo de pase
+    colA, colB, colC, colD = st.columns(4, gap="small")
+    # Cantidad de pases
+    with colA:
+        vals = pases["tipo_pase"].value_counts().reindex(tipos, fill_value=0)
+        fig, ax = plt.subplots(figsize=(1.5,1))
+        ax.barh(vals.index, vals.values, color="#00bfa5", height=0.3)
+        for i, v in enumerate(vals.values):
+            ax.text(v+0.1, i, f"{int(v)}", va="center", fontsize=7)
+        ax.set_xlabel("Nº")
+        ax.tick_params(labelsize=6)
+        plt.tight_layout()
+        st.pyplot(fig)
+        st.caption("Cantidad por tipo")
 
-    fig2, ax2 = plt.subplots(figsize=(1.8,0.8))
-    ax2.barh(tasas.index, tasas.values*100, color="#0984e3", height=0.3)
-    for i, v in enumerate(tasas.values):
-        ax2.text(v*100+1, i, f"{v*100:.1f}%", va="center", fontsize=7)
-    ax2.set_xlim(0,100)
-    ax2.set_xlabel("% éxito")
-    ax2.tick_params(labelsize=6)
-    plt.tight_layout()
-    st.pyplot(fig2)
+    # Tasa de éxito por tipo
+    with colB:
+        tasas = (
+            pases.groupby("tipo_pase")["pase_exitoso"]
+                 .apply(lambda s: (s=="Sí").sum()/len(s))
+                 .reindex(tipos, fill_value=0)
+        )
+        fig2, ax2 = plt.subplots(figsize=(1.5,1))
+        ax2.barh(tasas.index, tasas.values*100, color="#0984e3", height=0.3)
+        for i, v in enumerate(tasas.values):
+            ax2.text(v*100+1, i, f"{v*100:.1f}%", va="center", fontsize=7)
+        ax2.set_xlim(0,100)
+        ax2.set_xlabel("% éxito")
+        ax2.tick_params(labelsize=6)
+        plt.tight_layout()
+        st.pyplot(fig2)
+        st.caption("Precisión por tipo")
+
+    # Pie chart de tipos de pase
+    with colC:
+        fig, ax = plt.subplots(figsize=(1.1,1.1))
+        vals = pases["tipo_pase"].value_counts().reindex(tipos, fill_value=0)
+        ax.pie(vals.values, labels=vals.index, autopct="%d", textprops={'fontsize':7})
+        ax.set_title("Tipo", fontsize=7)
+        plt.tight_layout()
+        st.pyplot(fig)
+
+    # Pie chart de éxito global
+    with colD:
+        fig, ax = plt.subplots(figsize=(1.1,1.1))
+        vals = pases["pase_exitoso"].value_counts().reindex(["Sí","No"], fill_value=0)
+        ax.pie(vals.values, labels=vals.index, autopct="%d", textprops={'fontsize':7})
+        ax.set_title("Éxito global", fontsize=7)
+        plt.tight_layout()
+        st.pyplot(fig)
     st.markdown("---")
 
-# ─────────────────────────────
-# TABLA DETALLADA Y DESCARGA
-# ─────────────────────────────
+# ────────── Tabla detallada y descarga ──────────
 st.subheader("📄 Eventos filtrados")
 st.dataframe(df_f, use_container_width=True, height=200)
 buf = StringIO(); df_f.to_csv(buf, index=False)
